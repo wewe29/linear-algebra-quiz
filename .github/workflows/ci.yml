@@ -1,0 +1,38 @@
+name: content-gates
+
+# 内容门禁 CI：任何推送到 main 的改动都必须跑完全部 8 步门禁；
+# 构建产物与已提交成品出现漂移（改了题库却没重建就提交）也会被拦下。
+# 见《应用化实施方案与迭代计划.md》迭代 0。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps
+        run: pip install sympy
+
+      - name: Run full gate pipeline (build + 6 verification gates)
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python tools/update_site.py --no-stage
+
+      - name: Fail on drift (committed product != freshly built)
+        run: |
+          git diff --exit-code -- "01《线性代数》题库刷题网页.html" \
+            || (echo "::error::成品与源码构建结果不一致：题库/界面源码改了但没重跑构建就提交" && exit 1)

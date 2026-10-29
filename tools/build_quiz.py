@@ -28,7 +28,20 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.abspath(os.path.join(HERE, "..", "01《线性代数》题库刷题网页.html"))
 
-KATEX_DIR = r"D:\workspace\5-docs\exam\数据库\node_modules\katex\dist"
+
+def _katex_dir():
+    """KaTeX 发行版定位：环境变量 > 仓库内 vendor（CI/异机用）> 本机 node_modules（历史路径）。
+    vendor 进仓库的原因：CI 与其他机器没有 D 盘 node_modules，硬编码路径会让门禁直接跑不起来。"""
+    env = os.environ.get("KATEX_DIR")
+    if env and os.path.isdir(env):
+        return env
+    local = os.path.join(HERE, "vendor", "katex", "dist")
+    if os.path.isdir(local):
+        return local
+    return r"D:\workspace\5-docs\exam\数据库\node_modules\katex\dist"
+
+
+KATEX_DIR = _katex_dir()
 
 sys.path.insert(0, HERE)
 from qa_bank import load_bank  # noqa: E402
