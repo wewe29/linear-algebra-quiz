@@ -14,7 +14,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from qa_bank import load_bank  # noqa: E402
 
-HTML = r"D:\workspace\5-docs\线性代数复习资料\01《线性代数》题库刷题网页.html"
+# 成品路径相对脚本定位（脚本在 tools/ 内，成品在其上一级）——
+# 不写绝对路径，CI/异机也能跑。可用环境变量覆盖（平台构建复用时指到别处）。
+HTML = os.environ.get("QUIZ_HTML") or os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "01《线性代数》题库刷题网页.html"))
 
 FIELDS = ["type", "difficulty", "knowledgePoint", "stem", "options", "answer",
           "accept", "answerText", "points", "explanation", "misconception", "extension"]
