@@ -34,7 +34,9 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PROJECT = os.path.abspath(os.path.join(HERE, ".."))
+# 项目根（成品 HTML 所在目录）：默认 = tools 的上一级；
+# 平台构建（build_subject.py）用环境变量 QUIZ_PROJECT_DIR 重定向，避免污染仓库。
+PROJECT = os.path.abspath(os.environ.get("QUIZ_PROJECT_DIR") or os.path.join(HERE, ".."))
 PRODUCT = os.path.join(PROJECT, "01《线性代数》题库刷题网页.html")
 WORKDIR = r"E:\抗菌肽"
 STAGE_SITE = os.path.join(WORKDIR, "_deploy", "linear-algebra-quiz")
