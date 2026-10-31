@@ -1,6 +1,6 @@
 name: content-gates
 
-# 内容门禁 CI：任何推送到 main 的改动都必须跑完全部 8 步门禁；
+# 内容门禁 CI：任何推送到 main 的改动都必须跑完全部 9 步门禁；
 # 构建产物与已提交成品出现漂移（改了题库却没重建就提交）也会被拦下。
 # 见《应用化实施方案与迭代计划.md》迭代 0。
 
@@ -27,12 +27,29 @@ jobs:
       - name: Install deps
         run: pip install sympy
 
-      - name: Run full gate pipeline (build + 6 verification gates)
+      - name: Run full gate pipeline (build + 7 verification gates)
         env:
           PYTHONIOENCODING: utf-8
-        run: python tools/update_site.py --no-stage
-
-      - name: Fail on drift (committed product != freshly built)
+          # 构建产物写到临时目录：默认会落在仓库根目录，污染工作区；
+          # 而且**部署用的成品叫 index.html、构建产物叫 01《…》.html**，
+          # 两者名字不同，漂移检查必须自己把两者对上（见下一步）。
+          QUIZ_PROJECT_DIR: ${{ runner.temp }}/quiz-build
         run: |
-          git diff --exit-code -- "01《线性代数》题库刷题网页.html" \
-            || (echo "::error::成品与源码构建结果不一致：题库/界面源码改了但没重跑构建就提交" && exit 1)
+          mkdir -p "$QUIZ_PROJECT_DIR"
+          python tools/update_site.py --no-stage
+
+      - name: Fail on drift (committed index.html != freshly built product)
+        env:
+          # ① 内容层：已提交成品里的题库必须与源码一致
+          #    （diff_bank.py 比对源码 qa_bank 与 $QUIZ_HTML 里的内联题库）
+          QUIZ_HTML: index.html
+        run: |
+          set -e
+          python tools/diff_bank.py
+          # ② 字节层：已提交的 index.html 必须**就是**按当前源码构建出来的那个文件
+          #    --strip-trailing-cr：屏蔽 Windows checkout 的 CRLF 差异（autocrlf 陷阱）
+          if ! diff -q --strip-trailing-cr index.html "$QUIZ_PROJECT_DIR/01《线性代数》题库刷题网页.html" > /dev/null; then
+            echo "::error::已提交的 index.html 与按当前源码重新构建的结果不一致：改了题库/界面却没重新构建就提交"
+            exit 1
+          fi
+          echo "::notice::已提交成品与按当前源码重建的产物一致（字节级）"
