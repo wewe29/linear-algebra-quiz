@@ -43,6 +43,8 @@ jobs:
           # ① 内容层：已提交成品里的题库必须与源码一致
           #    （diff_bank.py 比对源码 qa_bank 与 $QUIZ_HTML 里的内联题库）
           QUIZ_HTML: index.html
+          #    env 不跨 step 传递，② 要用同一个构建目录，必须在这里再写一遍
+          QUIZ_PROJECT_DIR: ${{ runner.temp }}/quiz-build
         run: |
           set -e
           python tools/diff_bank.py
