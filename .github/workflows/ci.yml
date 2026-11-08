@@ -55,3 +55,48 @@ jobs:
             exit 1
           fi
           echo "::notice::已提交成品与按当前源码重建的产物一致（字节级）"
+
+  # ── mcode 渠道核验（2026-11-07 起纳入正式发布流程）─────────────────────────
+  # 为什么要有这个 job：
+  #   CI 绿 ≠ 线上是最新。CI 只比对**仓内**已提交成品与「按当前源码重建的结果」，
+  #   查不到「线上那个 mcode 节点有没有重发过」。
+  #   2026-11-01 的 mdLite 修复提交后，GitHub Pages 更新了，
+  #   而 mcode 单文件站**整整两天没重发**（线上落后 HEAD 两天）。
+  #
+  # 这个 job 红 = **mcode 渠道待补发**（不是代码坏了）。
+  #   代码健康看 content-gates；mcode 是手动补发渠道，所以这里只报警不阻塞。
+  verify-mcode-online:
+    name: 线上核验：mcode 渠道是否已跟上 HEAD
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 判据反向测试（造错必须报错）
+        env:
+          PYTHONIOENCODING: utf-8
+        run: python tools/test_online_judge.py
+
+      - name: 核验 mcode 渠道：线上 == HEAD 成品
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          python tools/verify_mcode_online.py --ci --ci-repo publish \
+            --root linalg="$GITHUB_WORKSPACE"
+
+      - name: 自证有牙齿：故意注入漂移，核验器必须报红
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          mkdir -p drift-root
+          cp index.html drift-root/index.html
+          printf 'x' >> drift-root/index.html
+          if python tools/verify_mcode_online.py --ci --ci-repo publish --only linalg-single \
+               --root linalg="$GITHUB_WORKSPACE/drift-root"; then
+            echo "::error::核验器对注入的漂移没有报错 —— 这道门禁没有牙齿"
+            exit 1
+          fi
+          echo "::notice::核验器对注入的漂移正确报错（门禁有牙齿）"
